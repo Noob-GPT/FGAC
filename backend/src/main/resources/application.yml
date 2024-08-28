@@ -1,0 +1,24 @@
+spring:
+  application:
+    name: fgac
+# .env파일은 스프링에서 직접 갖고올 수 없어 .yml 파일이나 .properties 파일에서 받아 올 수 있게 바꾸어야한다
+# 그래서 설정을 통해 .env파일에서 값을 갖고올 수 있게 바꾸어주는 코드
+  config:
+    import: optional:file:.env[.properties]
+
+
+
+
+my:
+  api:
+    key: ${MY_API_KEY}
+    image: ${MY_IMAGE_KEY}
+    projectName: ${MY_PROJECT_NAME}
+
+logging:
+  level:
+    com:
+      npt:
+        fgac:
+          controller: DEBUG
+          service: DEBUG
