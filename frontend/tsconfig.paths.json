@@ -6,7 +6,8 @@
       "@hooks": ["./hooks"],
       "@layout": ["./layout"],
       "@pages": ["./pages"],
-      "@routes": ["./routes"]
+      "@routes": ["./routes"],
+      "@utils": ["./utils"]
     }
   }
 }

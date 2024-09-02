@@ -1,5 +1,5 @@
 import {SyntheticEvent, useState} from 'react';
-import {useNavigate} from 'react-router-dom';
+import {useLocation, useNavigate} from 'react-router-dom';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
@@ -13,8 +13,10 @@ function a11yProps(index: number) {
 }
 
 export default function Sidebar() {
-    const [value, setValue] = useState(0);
     const navigate = useNavigate();
+    const location = useLocation();
+    const initialStep = parseInt(location.pathname.split('/step/')[1]) - 1;
+    const [value, setValue] = useState(!isNaN(initialStep) ? initialStep : 0);
 
     const handleChange = (event: SyntheticEvent, newValue: number) => {
         setValue(newValue);

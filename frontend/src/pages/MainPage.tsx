@@ -2,6 +2,8 @@ import {useEffect, useRef, useState} from 'react';
 import {Chat, Input} from '@components';
 import Box from '@mui/material/Box';
 import {useParams} from 'react-router-dom';
+import {useDropzone} from 'react-dropzone';
+import {uploadImage} from '@utils';
 
 interface ChatData {
     sender: string;
@@ -17,6 +19,7 @@ export default function MainPage() {
     useEffect(() => {
         const data = sessionStorage.getItem(stepId || 'step1');
         const parsedData = data ? JSON.parse(data) : [];
+
         setChatData(prevChatData => ({...prevChatData, [stepId || 'step1']: parsedData}));
     }, [stepId]);
 
@@ -35,11 +38,10 @@ export default function MainPage() {
         }));
 
         // 서버에 API 요청 보내기
-        // const response = await sendMessageToServer(message);
-        // const serverMessage = {sender: 'SERVER', content: response.content};
-        const serverMessage = {sender: 'FGAC', content: 'hello'};
-
+        const response = await sendMessageToServer(message);
+        const serverMessage = {sender: 'FGAC', content: response.content};
         const finalChatData = [...updatedChatData, serverMessage];
+
         setChatData(prevChatData => ({
             ...prevChatData,
             [stepId || 'step1']: finalChatData
@@ -49,14 +51,38 @@ export default function MainPage() {
         sessionStorage.setItem(stepId || 'step1', JSON.stringify(finalChatData));
     };
 
+    const {getRootProps, isDragActive} = useDropzone({
+        onDrop: (acceptedFiles: File[]) => {
+            const file = acceptedFiles[0];
+
+            if (file && file.type.startsWith('image/'))
+                handleImageUpload(file);
+        },
+        accept: {'image/*': []}, // 이미지 파일만 허용
+        multiple: false, // 한 번에 하나의 파일만 허용
+        noClick: true // 클릭 시 파일 탐색기 열리지 않도록 설정
+    });
+
+    const handleImagePaste = (image: File) => {
+        handleImageUpload(image);
+    };
+
+    const handleImageUpload = async (file: File) => {
+        const imageUrl = await uploadImage(file);
+        if (imageUrl) {
+            handleSend(`이미지: ${imageUrl}`);
+        }
+    };
 
     return (
         <Box
+            position={'relative'}
             display={'flex'}
             flexDirection={'column'}
             alignItems={'center'}
             height={'100vh'}
             width={'100%'}
+            {...getRootProps()}
         >
             <Box flexGrow={1} width={'100%'} overflow={'auto'} p={'0 0 16px 17px'}>
                 <Box maxWidth={800} m={'auto'}>
@@ -67,8 +93,25 @@ export default function MainPage() {
                 </Box>
             </Box>
             <Box maxWidth={800} width={'100%'} mb={2}>
-                <Input onSend={handleSend}/>
+                <Input onSend={handleSend} onImagePaste={handleImagePaste}/>
             </Box>
+            {isDragActive && (
+                <Box
+                    position={'absolute'}
+                    top={0}
+                    left={0}
+                    right={0}
+                    bottom={0}
+                    bgcolor={'rgba(0, 0, 0, 0.5)'}
+                    zIndex={9999}
+                    display={'flex'}
+                    justifyContent={'center'}
+                    alignItems={'center'}
+                    color={'#FFF'}
+                >
+                    여기에 사진을 드롭하세요
+                </Box>
+            )}
         </Box>
     );
 }
@@ -82,6 +125,6 @@ async function sendMessageToServer(message: string): Promise<{ content: string }
         },
         body: JSON.stringify({message})
     });
-    const data = await response.json();
-    return data;
+
+    return await response.json();
 }
