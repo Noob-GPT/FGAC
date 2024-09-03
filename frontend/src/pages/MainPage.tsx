@@ -2,7 +2,7 @@ import {useEffect, useRef, useState} from 'react';
 import {Chat, Input} from '@components';
 import Box from '@mui/material/Box';
 import {useParams} from 'react-router-dom';
-import {useDropzone} from 'react-dropzone';
+import {DropEvent, FileRejection, useDropzone} from 'react-dropzone';
 import {uploadImage} from '@utils';
 
 interface ChatData {
@@ -14,6 +14,7 @@ export default function MainPage() {
     const {stepId} = useParams<{ stepId: string }>();
     const [chatData, setChatData] = useState<{ [key: string]: ChatData[] }>({});
     const scrollRef = useRef<HTMLDivElement>(null);
+    const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
 
     // 세션 스토리지에서 채팅 기록 가져오기
     useEffect(() => {
@@ -26,53 +27,35 @@ export default function MainPage() {
     // 채팅을 보내면 스크롤 포커스를 밑으로 이동
     useEffect(() => {
         scrollRef.current?.scrollIntoView({behavior: 'smooth'});
-    }, [chatData]);
+    }, [chatData, uploadedImageUrl]);
 
-    const handleSend = async (message: string) => {
-        const newMessage = {sender: 'USER', content: message};
-        const updatedChatData = [...(chatData[stepId || 'step1'] || []), newMessage];
-
-        setChatData(prevChatData => ({
-            ...prevChatData,
-            [stepId || 'step1']: updatedChatData
-        }));
-
-        // 서버에 API 요청 보내기
-        const response = await sendMessageToServer(message);
-        const serverMessage = {sender: 'FGAC', content: response.content};
-        const finalChatData = [...updatedChatData, serverMessage];
-
-        setChatData(prevChatData => ({
-            ...prevChatData,
-            [stepId || 'step1']: finalChatData
-        }));
-
-        // 세션 스토리지에 최종 데이터 저장
-        sessionStorage.setItem(stepId || 'step1', JSON.stringify(finalChatData));
-    };
-
-    const {getRootProps, isDragActive} = useDropzone({
-        onDrop: (acceptedFiles: File[]) => {
-            const file = acceptedFiles[0];
-
-            if (file && file.type.startsWith('image/'))
-                handleImageUpload(file);
-        },
-        accept: {'image/*': []}, // 이미지 파일만 허용
-        multiple: false, // 한 번에 하나의 파일만 허용
-        noClick: true // 클릭 시 파일 탐색기 열리지 않도록 설정
-    });
-
-    const handleImagePaste = (image: File) => {
-        handleImageUpload(image);
-    };
-
+    // 이미지 파일을 업로드하고 업로드된 이미지의 링크를 저장함
     const handleImageUpload = async (file: File) => {
         const imageUrl = await uploadImage(file);
-        if (imageUrl) {
-            handleSend(`이미지: ${imageUrl}`);
-        }
+        console.log('imageUrl', imageUrl);
+
+        if (imageUrl)
+            setUploadedImageUrl(imageUrl);
     };
+
+    // 드래그 앤 드롭
+    const {getRootProps, isDragActive} = useDropzone({
+        onDrop: (acceptedFiles: File[], fileRejections: FileRejection[], event: DropEvent) => {
+            const dragEvent = event as DragEvent;
+            const text = dragEvent.dataTransfer?.getData('text');
+
+            if (text && text.startsWith('http')) {
+                setUploadedImageUrl(text);
+            } else {
+                const file = acceptedFiles[0];
+
+                if (file && file.type.startsWith('image/'))
+                    handleImageUpload(file);
+            }
+        },
+        accept: {'image/*': []}, // 이미지 파일만 허용
+        noClick: true // 클릭 시 파일 탐색기 열리지 않도록 설정
+    });
 
     return (
         <Box
@@ -93,7 +76,11 @@ export default function MainPage() {
                 </Box>
             </Box>
             <Box maxWidth={800} width={'100%'} mb={2}>
-                <Input onSend={handleSend} onImagePaste={handleImagePaste}/>
+                <Input
+                    setChatData={setChatData}
+                    uploadedImageUrl={uploadedImageUrl}
+                    setUploadedImageUrl={setUploadedImageUrl}
+                    onImageUpload={handleImageUpload}/>
             </Box>
             {isDragActive && (
                 <Box
@@ -114,17 +101,4 @@ export default function MainPage() {
             )}
         </Box>
     );
-}
-
-async function sendMessageToServer(message: string): Promise<{ content: string }> {
-    // 서버에 메시지 보내기 로직
-    const response = await fetch('/api/sendMessage', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({message})
-    });
-
-    return await response.json();
 }
