@@ -18,10 +18,11 @@ public class CompletionRequestDto {
 
     private float temperature;
 
-    public CompletionRequestDto(ChatMessageDto messages) {
+    public CompletionRequestDto(List<ChatMessageDto> messages) {
         this.model = "gpt-4o";
-        this.messages = new ArrayList<>();  // 리스트 초기화
-        this.messages.add(messages);
+        this.messages = messages;
+//        this.messages = new ArrayList<>();  // 리스트 초기화
+//        this.messages.add(messages);
         this.temperature = 0.8f;
     }
 }

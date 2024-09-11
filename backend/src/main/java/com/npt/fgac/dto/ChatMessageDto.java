@@ -11,11 +11,11 @@ import lombok.Setter;
 @NoArgsConstructor  // 기본 생성자 추가
 public class ChatMessageDto {
     private String role;
-    private String content;
+    private Object content;
     // JSON 역직렬화를 위한 생성자에 @JsonCreator 사용
     @JsonCreator
-    public ChatMessageDto(String content) {
-        this.role = "user";
+    public ChatMessageDto(String role, Object content) {
+        this.role = role;
         this.content = content;
     }
 }
