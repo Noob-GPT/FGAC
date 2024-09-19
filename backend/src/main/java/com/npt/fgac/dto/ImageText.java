@@ -5,9 +5,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
-import org.springframework.web.multipart.MultipartFile;
-
-import java.util.Objects;
 
 @Getter
 @Setter
@@ -15,13 +12,15 @@ import java.util.Objects;
 public class ImageText {
     private String type;
     private String text;
-    private ImageUrl image_url;
+    private ImageUrl imageUrl; // JSON 키와 일치시키기 위해 변경
 
     @JsonCreator
-    public ImageText(String type, String text, ImageUrl image_url) {
+    public ImageText(@JsonProperty("type") String type,
+                     @JsonProperty("text") String text,
+                     @JsonProperty("image_url") ImageUrl imageUrl) {
         this.type = type;
         this.text = text;
-        this.image_url = image_url;
+        this.imageUrl = imageUrl;
     }
 }
 

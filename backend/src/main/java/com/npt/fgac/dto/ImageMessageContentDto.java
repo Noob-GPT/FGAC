@@ -10,7 +10,7 @@ import java.util.List;
 public class ImageMessageContentDto {
     private String role;
     private List<ImageText> content;
-    public ImageMessageContentDto(String role, List<ImageText> content) {
+    public ImageMessageContentDto(@JsonProperty("role") String role, @JsonProperty("content") List<ImageText> content) {
         this.role = role;
         this.content = content;
     }
