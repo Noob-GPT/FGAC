@@ -4,19 +4,24 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import {Divider} from '@mui/material';
 
-interface ChatProps {
+// 유저가 입력한 단일 객체
+interface ChatData {
     data: {
-        sender: string;
-        content: string;
-    };
+        role: string;
+        content: Array<{
+            type: string;
+            text?: string;
+            image_url?: { url: string };
+        }>;
+    }
 }
 
-export default function Chat({data}: ChatProps) {
-    const {sender, content} = data;
+export default function Chat({data}: ChatData) {
+    const {role, content} = data;
 
     return (
         <Box py={3}>
-            <Typography variant={'h6'} fontWeight={'bold'} gutterBottom>{sender}</Typography>
+            <Typography variant={'h6'} fontWeight={'bold'} gutterBottom>{role}</Typography>
             <Divider/>
             <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
@@ -40,7 +45,7 @@ export default function Chat({data}: ChatProps) {
                     )
                 }}
             >
-                {content}
+                {content.filter(item => item.text).map(item => item.text).join('\n')}
             </ReactMarkdown>
         </Box>
     );

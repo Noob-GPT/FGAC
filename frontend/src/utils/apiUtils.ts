@@ -1,3 +1,9 @@
+// 세션 스토리지에서 이전 대화 내용을 가져오는 함수
+const getPreviousMessages = () => {
+    const data = sessionStorage.getItem('chatMessages');
+    return data ? JSON.parse(data) : [];
+};
+
 // 이미지 파일 업로드 API를 요청
 export const uploadImage = async (file: File): Promise<string | null> => {
     const formData = new FormData();
@@ -22,10 +28,14 @@ export const uploadImage = async (file: File): Promise<string | null> => {
     }
 };
 
-
 // 텍스트만 담아서 API 요청
 export const sendTextMessage = async (message: string): Promise<any> => {
-    const payload = {role: 'user', content: message};
+    const previousMessages = getPreviousMessages();
+    const payload = [
+        ...previousMessages,
+        {role: 'user', content: message}
+    ];
+
     const response = await fetch('/api/v1/chatGpt/prompt', {
         method: 'POST',
         headers: {
@@ -34,26 +44,38 @@ export const sendTextMessage = async (message: string): Promise<any> => {
         body: JSON.stringify(payload)
     });
 
-    if (!response.ok)
-        throw new Error('Text message send failed');
+    if (!response.ok) throw new Error('Text message send failed');
 
     return await response.json();
 };
 
 // 텍스트와 이미지를 담아서 API 요청
 export const sendImageMessage = async (text: string, imgUrl: string): Promise<any> => {
-    const formData = new FormData();
+    const previousMessages = getPreviousMessages();
+    const payload = [
+        ...previousMessages,
+        {
+            role: 'user',
+            content: [
+                    {type: 'text', text: text},
+        {
+            type: 'image_url',
+            image_url: {
+                url: imgUrl
+            }
+        }
+    ]
+}];
 
-    formData.append('text', text);
-    formData.append('imgUrl', imgUrl);
-
-    const response = await fetch('/api/v1/chatGpt/prompt/image', {
+    const response = await fetch('/api/v1/chatGpt/prompt', {
         method: 'POST',
-        body: formData
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
     });
 
-    if (!response.ok)
-        throw new Error('Image message send failed');
+    if (!response.ok) throw new Error('Image message send failed');
 
     return await response.json();
 };

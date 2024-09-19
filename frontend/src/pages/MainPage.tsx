@@ -4,10 +4,15 @@ import Box from '@mui/material/Box';
 import {useParams} from 'react-router-dom';
 import {DropEvent, FileRejection, useDropzone} from 'react-dropzone';
 import {uploadImage} from '@utils';
+import { Skeleton } from '@mui/material';
 
 interface ChatData {
-    sender: string;
-    content: string;
+    role: string;
+    content: Array<{
+        type: string;
+        text?: string;
+        image_url?: { url: string };
+    }>;
 }
 
 export default function MainPage() {
@@ -15,6 +20,7 @@ export default function MainPage() {
     const [chatData, setChatData] = useState<{ [key: string]: ChatData[] }>({});
     const scrollRef = useRef<HTMLDivElement>(null);
     const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true); // 응답 대기 상태 추가
 
     // 세션 스토리지에서 채팅 기록 가져오기
     useEffect(() => {
@@ -22,6 +28,7 @@ export default function MainPage() {
         const parsedData = data ? JSON.parse(data) : [];
 
         setChatData(prevChatData => ({...prevChatData, [stepId || 'step1']: parsedData}));
+        setIsLoading(false); // 데이터 로딩 완료 시 상태 변경
     }, [stepId]);
 
     // 채팅을 보내면 스크롤 포커스를 밑으로 이동
@@ -69,9 +76,13 @@ export default function MainPage() {
         >
             <Box flexGrow={1} width={'100%'} overflow={'auto'} p={'0 0 16px 17px'}>
                 <Box maxWidth={800} m={'auto'}>
-                    {(chatData[stepId || 'step1'] || []).map((data, index) => (
-                        <Chat key={index} data={data}/>
-                    ))}
+                    {isLoading ? (
+                        <Skeleton variant="rectangular" width="100%" height={400} />
+                    ) : (
+                        (chatData[stepId || 'step1'] || []).map((data, index) => (
+                            <Chat key={index} data={data} />
+                        ))
+                    )}
                     <div ref={scrollRef}/>
                 </Box>
             </Box>
