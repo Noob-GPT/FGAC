@@ -39,9 +39,15 @@ public class ChatGPTController {
      * [API] ChatGPT 모델 리스트를 조회합니다.
      */
     @PostMapping("/prompt")
-    public ResponseEntity<List<Map<String, Object>>> selectPrompt(@RequestBody ChatMessageDto chatMessageDto) {
+    public ResponseEntity<List<Map<String, Object>>> selectPrompt(@RequestBody List<ChatMessageDto> chatMessageDto) throws JsonProcessingException {
+        // 꼭 질문의 대화 순서가 맞지 않아도 괜찮다. 근데 되도록이면 순서대로 전달해야 정확한 정보를 줄 수 있다
+        ObjectMapper objectMapper = new ObjectMapper();
         CompletionRequestDto completionRequestDto = new CompletionRequestDto(chatMessageDto);
         List<Map<String, Object>> result = chatGPTService.prompt(completionRequestDto);
+        // 객체를 JSON 문자열로 변환
+        String jsonString = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(completionRequestDto);
+        // JSON 문자열 출력
+        System.out.println(jsonString);
         return new ResponseEntity<>(result, HttpStatus.OK);
     }
 

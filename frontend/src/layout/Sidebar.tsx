@@ -38,8 +38,8 @@ export default function Sidebar() {
             >
                 <Tab label='캐드 도면 이미지 삽입' {...a11yProps(0)} />
                 <Tab label='건축공간 특성 조사' {...a11yProps(1)} />
-                <Tab label='관련 볍규조항 조사' {...a11yProps(2)} />
-                <Tab label='가연물&피난자 특성 조사' {...a11yProps(3)} />
+                <Tab label='관련 법규조항 조사' {...a11yProps(2)} />
+                <Tab label='가연물 & 피난자 특성 조사' {...a11yProps(3)} />
                 <Tab label='피난시나리오 작성' {...a11yProps(4)} />
                 <Tab label='피난시간 계산' {...a11yProps(5)} />
                 <Tab label='개선안 도출' {...a11yProps(6)} />
