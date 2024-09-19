@@ -49,7 +49,7 @@ export const sendTextMessage = async (message: string): Promise<any> => {
     return await response.json();
 };
 
-// 텍스트와 이미지를 담아서 API 요청
+// 텍스트와 이미지 한 개를 직접 담아서 API 요청
 export const sendImageMessage = async (text: string, imgUrl: string): Promise<any> => {
     const previousMessages = getPreviousMessages();
     const payload = [
@@ -66,6 +66,40 @@ export const sendImageMessage = async (text: string, imgUrl: string): Promise<an
         }
     ]
 }];
+
+    const response = await fetch('/api/v1/chatGpt/prompt', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) throw new Error('Image message send failed');
+
+    return await response.json();
+};
+
+
+// 자동으로 세션 스토리지의 사진을 넣어서 API 요청
+export const sendImageMessageAuto = async (text: string): Promise<any> => {
+    const imageUrls = JSON.parse(sessionStorage.getItem("imageUrls") || '[]');
+    const previousMessages = getPreviousMessages();
+    let payload = [
+        ...previousMessages,
+        {
+            role: 'user',
+            content: [
+                {type: 'text', text: text},
+            ]
+        }];
+
+    imageUrls.forEach((imageUrl: string) => {
+        payload[payload.length-1].content.push({
+            type: 'image_url',
+            image_url: {url: imageUrl}
+        })
+    })
 
     const response = await fetch('/api/v1/chatGpt/prompt', {
         method: 'POST',

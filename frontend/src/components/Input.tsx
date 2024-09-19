@@ -1,13 +1,4 @@
-import {
-    ChangeEvent,
-    ClipboardEvent,
-    Dispatch,
-    KeyboardEvent,
-    SetStateAction,
-    SyntheticEvent,
-    useEffect,
-    useState
-} from 'react';
+import {ChangeEvent, ClipboardEvent, Dispatch, KeyboardEvent, SetStateAction, SyntheticEvent, useState} from 'react';
 import {
     Alert,
     Box,
@@ -28,7 +19,7 @@ import SendIcon from '@mui/icons-material/Send';
 import CancelIcon from '@mui/icons-material/Cancel';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import {DropEvent, FileRejection, useDropzone} from 'react-dropzone';
-import {sendImageMessage, sendTextMessage} from '@utils';
+import {sendImageMessageAuto} from '@utils';
 import {useParams} from 'react-router-dom';
 
 interface ChatData {
@@ -55,8 +46,8 @@ export default function Input({
                               }: InputProps) {
     const [inputValue, setInputValue] = useState('');
     const [DialogOpen, setDialogOpen] = useState(false);
-    // const [inputImageUrl, setInputImageUrl] = useState('');
-    // const [recentImageUrl, setRecentImageUrl] = useState(uploadedImageUrl);
+    const [inputImageUrl, setInputImageUrl] = useState('');
+    const [recentImageUrl, setRecentImageUrl] = useState(uploadedImageUrl);
     const [hover, setHover] = useState(false);
     const [alertMessage, setAlertMessage] = useState('');
     const [alertOpen, setAlertOpen] = useState(false);
@@ -120,7 +111,7 @@ export default function Input({
 
     // 서버에 api 요청 후 데이터 받기
     const handleSend = async () => {
-            const imageUrls = sessionStorage.getItem("imageUrls");
+            const imageUrls = JSON.parse(sessionStorage.getItem("imageUrls") || '[]');
 
             if (imageUrls == null) {
                 setAlertMessage('먼저 사진을 넣어주세요');
@@ -131,6 +122,7 @@ export default function Input({
                 // const imgUrl = uploadedImageUrl;
                 let data;
 
+                // 채팅 데이터 저장
                 setChatData(prevChatData => {
                     const newChatData = [...(prevChatData[stepId || 'step1'] || [])];
                     // const markdownImage = uploadedImageUrl ? `![image](${uploadedImageUrl})\n\n` : '';
@@ -140,13 +132,19 @@ export default function Input({
                         role: 'user',
                         content: [{
                             type: 'text',
-                            text: inputValue
-                        }, {
-                            type: 'image_url',
-                            image_url: {
-                                url: uploadedImageUrl || ''
-                            }
+                            text: inputValue // 입력 텍스트
                         }]
+                    });
+
+                    // 방금 추가한 텍스트 메시지의 content 배열에 이미지 URL을 추가
+                    const lastChatEntry = newChatData[newChatData.length - 1]; // 방금 추가한 항목
+
+                    // imageUrls 배열의 각 이미지 주소를 content 배열에 추가
+                    imageUrls.forEach((imageUrl: string) => {
+                        lastChatEntry.content.push({
+                            type: 'image_url',
+                            image_url: {url: imageUrl}
+                        });
                     });
                     //`${markdownImage}${inputValue}`
 
@@ -158,19 +156,15 @@ export default function Input({
                         ...prevChatData,
                         [stepId || 'step1']: newChatData
                     };
-                })
-                ;
+                });
 
                 try {
                     // setRecentImageUrl(uploadedImageUrl);
                     // setUploadedImageUrl(null)
 
-                    if (imgUrl) {
-                        data = await sendImageMessage(inputValue, imgUrl);
-                    } else { // TODO: 어차피 사진 없이는 안되게 할거니까 필요 없는 else문
-                        data = await sendTextMessage(inputValue);
-                    }
-
+                    // 이미지를 포함해 GPT 요청
+                    data = await sendImageMessageAuto(inputValue);
+                    // 응답 데이터 저장
                     saveChatData(data);
                 } catch (error) {
                     setAlertMessage('요청을 처리하는 중에 오류가 발생했습니다.');
