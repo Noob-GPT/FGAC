@@ -76,7 +76,7 @@ export default function MainPage() {
             width={'100%'}
             {...getRootProps()}
         >
-            <Box flexGrow={1} width={'100%'} overflow={'auto'} p={'0 17px 0px 17px'}>
+            <Box flexGrow={1} width={'100%'} overflow={'auto'} p={'16px 17px 0px 17px'}>
                 <Box maxWidth={800} m={'auto'}>
                     {(chatData[stepId || 'step1'] || []).map((data, index) => (
                         <Chat key={index} data={data}/>
