@@ -45,13 +45,15 @@ interface InputProps {
     uploadedImageUrl: string | null;
     setUploadedImageUrl: Dispatch<SetStateAction<string | null>>;
     onImageUpload: (file: File) => void;
+    onLoadingChange: (loading: boolean) => void;
 }
 
 export default function Input({
                                   setChatData,
                                   uploadedImageUrl,
                                   setUploadedImageUrl,
-                                  onImageUpload
+                                  onImageUpload,
+                                  onLoadingChange
                               }: InputProps) {
     const [inputValue, setInputValue] = useState('');
     const [DialogOpen, setDialogOpen] = useState(false);
@@ -63,7 +65,7 @@ export default function Input({
     const {stepId} = useParams<{ stepId: string }>();
     const [visitedSteps, setVisitedSteps] = useState(() => JSON.parse(sessionStorage.getItem('visitedSteps') || '{}'));
 
-    const fixedPrompts : Record<number, string> = {
+    const fixedPrompts: Record<number, string> = {
         // 캐드 도면 이미지 삽입
         1: 'CAD 도면 이미지를 업로드 할거야 한국어로 알려줘',
         // 건축공간 특성 조사
@@ -112,7 +114,7 @@ export default function Input({
                         imageUrls.forEach((imageUrl: string) => {
                             lastChatEntry.content.push({
                                 type: 'image_url',
-                                image_url: { url: imageUrl }
+                                image_url: {url: imageUrl}
                             });
                         });
                     }
@@ -128,6 +130,7 @@ export default function Input({
 
                 // GPT API로 고정 프롬프트와 이미지 URL 전송
                 const sendFixedPrompt = async () => {
+                    onLoadingChange(true);
                     try {
                         // 이미지를 포함해 GPT 요청
                         const data = await sendImageMessageAuto(fixedPrompt);
@@ -136,6 +139,8 @@ export default function Input({
                     } catch (error) {
                         setAlertMessage('요청을 처리하는 중에 오류가 발생했습니다.');
                         setAlertOpen(true);
+                    } finally {
+                        onLoadingChange(false);
                     }
                 };
 
@@ -210,6 +215,8 @@ export default function Input({
     const handleSend = async () => {
         saveUserChatData();
 
+        onLoadingChange(true);
+
         try {
             // setRecentImageUrl(uploadedImageUrl);
             // setUploadedImageUrl(null)
@@ -221,6 +228,8 @@ export default function Input({
         } catch (error) {
             setAlertMessage('요청을 처리하는 중에 오류가 발생했습니다.');
             setAlertOpen(true);
+        } finally {
+            onLoadingChange(false);
         }
     };
 
