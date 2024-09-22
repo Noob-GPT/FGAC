@@ -16,6 +16,7 @@ interface ChatData {
 export default function MainPage() {
     const {stepId} = useParams<{ stepId: string }>();
     const [chatData, setChatData] = useState<{ [key: string]: ChatData[] }>({});
+    const [hasScroll, setHasScroll] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -35,7 +36,12 @@ export default function MainPage() {
     }, [stepId]);
 
     useEffect(() => {
-        scrollRef.current?.scrollIntoView({behavior: 'smooth'});
+        const scroll = scrollRef.current;
+
+        if (scroll) {
+            setHasScroll(scroll.scrollHeight > scroll.clientHeight);
+            scroll.scrollIntoView({behavior: 'smooth'});
+        }
     }, [chatData]);
 
     return (
@@ -47,7 +53,7 @@ export default function MainPage() {
             height={'100vh'}
             width={'100%'}
         >
-            <Box flexGrow={1} width={'100%'} overflow={'auto'} p={'16px 17px 0px 17px'}>
+            <Box ref={scrollRef} flexGrow={1} width={'100%'} overflow={'auto'} pl={hasScroll ? '17px' : '0'}>
                 <Box maxWidth={800} m={'auto'}>
                     {(chatData[stepId || 'step1'] || []).map((data, index) => (
                         <Chat key={index} data={data}/>
@@ -59,7 +65,6 @@ export default function MainPage() {
                             <Skeleton variant="rectangular" height={100} style={{marginTop: 16}}/>
                         </>
                     )}
-                    <div ref={scrollRef}/>
                 </Box>
             </Box>
             <Box maxWidth={800} width={'100%'} mb={2}>
