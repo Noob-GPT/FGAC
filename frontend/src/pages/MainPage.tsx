@@ -2,8 +2,6 @@ import {useEffect, useRef, useState} from 'react';
 import {Chat, Input} from '@components';
 import Box from '@mui/material/Box';
 import {useParams} from 'react-router-dom';
-import {DropEvent, FileRejection, useDropzone} from 'react-dropzone';
-import {uploadImage} from '@utils';
 import {Divider, Skeleton} from '@mui/material';
 
 interface ChatData {
@@ -18,8 +16,8 @@ interface ChatData {
 export default function MainPage() {
     const {stepId} = useParams<{ stepId: string }>();
     const [chatData, setChatData] = useState<{ [key: string]: ChatData[] }>({});
+    const [hasScroll, setHasScroll] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
-    const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     // 로딩 상태 props로 넘겨주기 위한 콜백
@@ -38,33 +36,13 @@ export default function MainPage() {
     }, [stepId]);
 
     useEffect(() => {
-        scrollRef.current?.scrollIntoView({behavior: 'smooth'});
-    }, [chatData, uploadedImageUrl]);
+        const scroll = scrollRef.current;
 
-    const handleImageUpload = async (file: File) => {
-        const imageUrl = await uploadImage(file);
-        console.log('imageUrl', imageUrl);
-
-        if (imageUrl)
-            setUploadedImageUrl(imageUrl);
-    };
-
-    const {getRootProps, isDragActive} = useDropzone({
-        onDrop: (acceptedFiles: File[], fileRejections: FileRejection[], event: DropEvent) => {
-            const dragEvent = event as DragEvent;
-            const text = dragEvent.dataTransfer?.getData('text');
-            if (text && text.startsWith('http')) {
-                setUploadedImageUrl(text);
-            } else {
-                const file = acceptedFiles[0];
-
-                if (file && file.type.startsWith('image/'))
-                    handleImageUpload(file);
-            }
-        },
-        accept: {'image/*': []}, // 이미지 파일만 허용
-        noClick: true // 클릭 시 파일 탐색기 열리지 않도록 설정
-    });
+        if (scroll) {
+            setHasScroll(scroll.scrollHeight > scroll.clientHeight);
+            scroll.scrollIntoView({behavior: 'smooth'});
+        }
+    }, [chatData]);
 
     return (
         <Box
@@ -74,9 +52,8 @@ export default function MainPage() {
             alignItems={'center'}
             height={'100vh'}
             width={'100%'}
-            {...getRootProps()}
         >
-            <Box flexGrow={1} width={'100%'} overflow={'auto'} p={'16px 17px 0px 17px'}>
+            <Box ref={scrollRef} flexGrow={1} width={'100%'} overflow={'auto'} pl={hasScroll ? '17px' : '0'}>
                 <Box maxWidth={800} m={'auto'}>
                     {(chatData[stepId || 'step1'] || []).map((data, index) => (
                         <Chat key={index} data={data}/>
@@ -88,35 +65,11 @@ export default function MainPage() {
                             <Skeleton variant="rectangular" height={100} style={{marginTop: 16}}/>
                         </>
                     )}
-                    <div ref={scrollRef}/>
                 </Box>
             </Box>
-            <Box maxWidth={800} width={'100%'} pt={2} pb={2} pl={2} pr={2}>
-                <Input
-                    setChatData={setChatData}
-                    uploadedImageUrl={uploadedImageUrl}
-                    setUploadedImageUrl={setUploadedImageUrl}
-                    onImageUpload={handleImageUpload}
-                    onLoadingChange={handleLoadingChange}
-                />
+            <Box maxWidth={800} width={'100%'} mb={2}>
+                <Input setChatData={setChatData} onLoadingChange={handleLoadingChange}/>
             </Box>
-            {isDragActive && (
-                <Box
-                    position={'absolute'}
-                    top={0}
-                    left={0}
-                    right={0}
-                    bottom={0}
-                    bgcolor={'rgba(0, 0, 0, 0.5)'}
-                    zIndex={9999}
-                    display={'flex'}
-                    justifyContent={'center'}
-                    alignItems={'center'}
-                    color={'#FFF'}
-                >
-                    여기에 사진을 드롭하세요
-                </Box>
-            )}
         </Box>
     );
 }
