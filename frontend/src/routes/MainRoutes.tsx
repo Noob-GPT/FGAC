@@ -1,5 +1,5 @@
 import {MainLayout} from '@layout';
-import {MainPage} from '@pages';
+import {InputImagePage, MainPage} from '@pages';
 import {Navigate} from 'react-router-dom';
 
 const MainRoutes = [
@@ -10,6 +10,10 @@ const MainRoutes = [
             {
                 path: '',
                 element: <Navigate to="/step/1" replace/>
+            },
+            {
+                path: 'step/1',
+                element: <InputImagePage/>
             },
             {
                 path: 'step/:stepId',

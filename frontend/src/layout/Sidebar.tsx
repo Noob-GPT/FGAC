@@ -51,7 +51,7 @@ export default function Sidebar() {
                     aria-label='Vertical tabs example'
                     sx={{width: 260, mt: 2}}
                 >
-                    <Tab label='캐드 도면 이미지 삽입' {...a11yProps(0)} />
+                    <Tab label='캐드 도면 이미지 업로드' {...a11yProps(0)} />
                     <Tab label='건축공간 특성 조사' {...a11yProps(1)} />
                     <Tab label='관련 법규조항 조사' {...a11yProps(2)} />
                     <Tab label='가연물 & 피난자 특성 조사' {...a11yProps(3)} />
