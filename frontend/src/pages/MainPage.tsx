@@ -67,7 +67,7 @@ export default function MainPage() {
                     )}
                 </Box>
             </Box>
-            <Box maxWidth={800} width={'100%'} mb={2}>
+            <Box maxWidth={800} width={'100%'} p={2}>
                 <Input setChatData={setChatData} onLoadingChange={handleLoadingChange}/>
             </Box>
         </Box>

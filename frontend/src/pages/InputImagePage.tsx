@@ -115,19 +115,19 @@ export default function InputImagePage() {
 
     // 세션 스토리지에 업로드된 이미지 URL 목록 저장
     const setSessionImages = () => {
-        sessionStorage.setItem('images', JSON.stringify(uploadedImageUrls));
+        sessionStorage.setItem('imageUrls', JSON.stringify(uploadedImageUrls));
     }
 
     // 세션 스토리지에서 업로드된 이미지 URL 목록 가져오기
     const getSessionImages = () => {
-        const images = sessionStorage.getItem('images');
+        const images = sessionStorage.getItem('imageUrls');
 
         return images ? JSON.parse(images) : [];
     };
 
     // 세션 스토리지에 저장된 이미지가 있는지 확인
     const isSavedSessionImages = () => {
-        return sessionStorage.getItem('images') !== null;
+        return sessionStorage.getItem('imageUrls') !== null;
     }
 
     const handleNextStep = (event: MouseEvent<HTMLButtonElement>) => {
