@@ -1,4 +1,4 @@
-import {SyntheticEvent, useState} from 'react';
+import {SyntheticEvent, useEffect, useState} from 'react';
 import {useLocation, useNavigate} from 'react-router-dom';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
@@ -19,7 +19,7 @@ export default function Sidebar() {
     const initialStep = parseInt(location.pathname.split('/step/')[1]) - 1;
     const [value, setValue] = useState(!isNaN(initialStep) ? initialStep : 0);
 
-    const handleChange = (event: SyntheticEvent, newValue: number) => {
+    const handleChange = (_event: SyntheticEvent, newValue: number) => {
         setValue(newValue);
         navigate(`/step/${newValue + 1}`);
     };
@@ -29,6 +29,12 @@ export default function Sidebar() {
         setValue(0);
         navigate('/step/1');
     }
+
+    useEffect(() => {
+        const step = parseInt(location.pathname.split('/step/')[1]) - 1;
+
+        setValue(isNaN(step) ? 0 : step);
+    }, [location]);
 
     return (
         <Box
