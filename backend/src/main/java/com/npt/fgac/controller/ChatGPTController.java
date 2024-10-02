@@ -13,10 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @RestController
 @RequestMapping(value = "/api/v1/chatGpt")
@@ -94,6 +91,29 @@ public class ChatGPTController {
         return new ResponseEntity<>(result, HttpStatus.OK);
     }
 
+//    @PostMapping("/test")
+//    public ResponseEntity<List<Map<String, Object>>> test(@RequestBody List<ChatMessageDto> chatMessageDto) throws JsonProcessingException {
+//        ObjectMapper objectMapper = new ObjectMapper();
+//        CompletionRequestDto completionRequestDto = new CompletionRequestDto(chatMessageDto);
+//
+//        List<Map<String, Object>> result = new ArrayList<>();
+//        Map<String, Object> response = new HashMap<>();
+//        response.put("index", 0);
+//        Map<String, Object> message = new HashMap<>();
+//        message.put("role", "assistant");
+//        message.put("content", "test content");
+//        message.put("refusal", null);
+//        response.put("message", message);
+//        response.put("logprobs", null);
+//        response.put("finish_reason", "stop");
+//        result.add(response);
+//
+//        String jsonString = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(completionRequestDto);
+//        System.out.println("jsonString: " + jsonString);
+//        System.out.println("=====================================");
+//        System.out.println("server response: " + result);
+//        return new ResponseEntity<>(result, HttpStatus.OK);
+//    }
 
 //    @PostMapping(value = "/prompt/image", consumes = {MediaType.APPLICATION_JSON_VALUE, MediaType.MULTIPART_FORM_DATA_VALUE})
 //    public ResponseEntity<List<Map<String, Object>>> selectPrompt(

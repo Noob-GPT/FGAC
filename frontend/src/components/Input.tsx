@@ -1,8 +1,15 @@
 import {ChangeEvent, Dispatch, KeyboardEvent, SetStateAction, SyntheticEvent, useEffect, useState} from 'react';
 import {Alert, Box, IconButton, InputAdornment, Snackbar, SnackbarCloseReason, TextField} from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
-import {sendImageMessageAuto} from '@utils';
 import {useParams} from 'react-router-dom';
+import {
+    getSessionChatMessagesByStepId,
+    getSessionImageUrls,
+    getSessionVisitedSteps,
+    sendImageMessage,
+    setSessionChatMessages,
+    setSessionVisitedSteps
+} from '@utils';
 
 interface ChatData {
     role: string;
@@ -23,7 +30,6 @@ export default function Input({setChatData, onLoadingChange}: InputProps) {
     const [alertMessage, setAlertMessage] = useState('');
     const [alertOpen, setAlertOpen] = useState(false);
     const {stepId} = useParams<{ stepId: string }>();
-    const [visitedSteps, setVisitedSteps] = useState(() => JSON.parse(sessionStorage.getItem('visitedSteps') || '{}'));
 
     const fixedPrompts: Record<number, string> = {
         // 캐드 도면 이미지 삽입
@@ -42,80 +48,67 @@ export default function Input({setChatData, onLoadingChange}: InputProps) {
         7: '전에 대화했던 내용과 사진을 기반으로, 개선안을 도출해줘',
     };
 
-// 입력 탭이 변경되면 프롬프트를 서버에 보내고 응답을 받음
+    // 입력 탭이 변경되면 프롬프트를 서버에 보내고 응답을 받음
     useEffect(() => {
-        if (stepId == null)
+        const visitedSteps = getSessionVisitedSteps();
+
+        if (stepId == null || visitedSteps[stepId])
             return;
 
         const stepIdNumber = parseInt(stepId, 10);
+        const fixedPrompt = fixedPrompts[stepIdNumber];
 
-        // step을 처음 방문했는지 확인
-        if (!visitedSteps[stepId]) {
-            const fixedPrompt = fixedPrompts[stepIdNumber];
+        setChatData(prevChatData => {
+            const newChat: ChatData = {
+                role: 'user',
+                content: [{
+                    type: 'text',
+                    text: fixedPrompt
+                }]
+            };
+            // 이미지가 존재하는 경우 content에 이미지 URL을 추가
+            const imageUrls = getSessionImageUrls();
 
-            // 고정 프롬프트 추가
-            if (fixedPrompt) {
-                setChatData(prevChatData => {
-                    const newChatData = [...(prevChatData[stepId || 'step1'] || [])];
-
-                    // 고정 프롬프트를 user 역할로 추가
-                    newChatData.push({
-                        role: 'user',
-                        content: [{
-                            type: 'text',
-                            text: fixedPrompt
-                        }]
+            if (imageUrls.length > 0) {
+                imageUrls.forEach((imageUrl: string) => {
+                    newChat.content.push({
+                        type: 'image_url',
+                        image_url: {url: imageUrl}
                     });
-
-                    // 이미지가 존재하는 경우 content에 이미지 URL을 추가
-                    const imageUrls = JSON.parse(sessionStorage.getItem("imageUrls") || '[]');
-                    if (imageUrls.length > 0) {
-                        const lastChatEntry = newChatData[newChatData.length - 1];
-                        imageUrls.forEach((imageUrl: string) => {
-                            lastChatEntry.content.push({
-                                type: 'image_url',
-                                image_url: {url: imageUrl}
-                            });
-                        });
-                    }
-
-                    // 세션 스토리지에 고정 프롬프트 저장
-                    setSessionData(newChatData, stepId);
-
-                    return {
-                        ...prevChatData,
-                        [stepId || '1']: newChatData
-                    };
                 });
-
-                // GPT API로 고정 프롬프트와 이미지 URL 전송
-                const sendFixedPrompt = async () => {
-                    onLoadingChange(true);
-                    try {
-                        // 이미지를 포함해 GPT 요청
-                        const data = await sendImageMessageAuto(fixedPrompt);
-                        // 응답 데이터 저장
-                        saveChatData(data);
-                    } catch (error) {
-                        setAlertMessage('요청을 처리하는 중에 오류가 발생했습니다.');
-                        setAlertOpen(true);
-                    } finally {
-                        onLoadingChange(false);
-                    }
-                };
-
-                // fetch 요청 실행
-                sendFixedPrompt();
-
-                // 방문 기록 추가
-                setVisitedSteps((prev: { [key: string]: boolean }) => ({
-                    ...prev,
-                    [stepId]: true
-                }));
-
             }
-        }
-    }, [stepId, visitedSteps]);
+
+            // 세션 스토리지에 고정 프롬프트 저장
+            setSessionChatMessages(newChat, stepId);
+
+            return {
+                ...prevChatData,
+                [stepId]: [...(prevChatData[stepId] || []), newChat]
+            };
+        });
+
+        // GPT API로 고정 프롬프트와 이미지 URL 전송
+        const sendFixedPrompt = async () => {
+            onLoadingChange(true);
+            try {
+                // 이미지를 포함해 GPT 요청
+                const data = await sendImageMessage();
+                // 응답 데이터 저장
+                saveChatData(data);
+            } catch (error) {
+                setAlertMessage('요청을 처리하는 중에 오류가 발생했습니다.');
+                setAlertOpen(true);
+            } finally {
+                onLoadingChange(false);
+            }
+        };
+
+        // fetch 요청 실행
+        sendFixedPrompt();
+
+        // 방문 기록 추가
+        setSessionVisitedSteps(stepId);
+    }, [stepId]);
 
 
     // 채팅 상태 업데이트
@@ -124,7 +117,7 @@ export default function Input({setChatData, onLoadingChange}: InputProps) {
     };
 
     function saveUserChatData() {
-        const imageUrls = JSON.parse(sessionStorage.getItem("imageUrls") || '[]');
+        const imageUrls = getSessionImageUrls();
 
         if (imageUrls == null) {
             setAlertMessage('먼저 사진을 넣어주세요');
@@ -132,40 +125,34 @@ export default function Input({setChatData, onLoadingChange}: InputProps) {
         }
 
         if (inputValue.trim()) {
-            // const imgUrl = uploadedImageUrl;
+            if (stepId == null)
+                return;
 
             // 채팅 데이터 저장
             setChatData(prevChatData => {
-                const newChatData = [...(prevChatData[stepId || '1'] || [])];
-                // const markdownImage = uploadedImageUrl ? `![image](${uploadedImageUrl})\n\n` : '';
-
                 // 사용자가 입력한 채팅 내용 저장
-                newChatData.push({
+                const newChat: ChatData = {
                     role: 'user',
                     content: [{
                         type: 'text',
                         text: inputValue // 입력 텍스트
                     }]
-                });
-
-                // 방금 추가한 텍스트 메시지의 content 배열에 이미지 URL을 추가
-                const lastChatEntry = newChatData[newChatData.length - 1]; // 방금 추가한 항목
+                };
 
                 // imageUrls 배열의 각 이미지 주소를 content 배열에 추가
                 imageUrls.forEach((imageUrl: string) => {
-                    lastChatEntry.content.push({
+                    newChat.content.push({
                         type: 'image_url',
                         image_url: {url: imageUrl}
                     });
                 });
-                //`${markdownImage}${inputValue}`
 
                 setInputValue('');
-                setSessionData(newChatData, stepId || '1');
+                setSessionChatMessages(newChat, stepId);
 
                 return {
                     ...prevChatData,
-                    [stepId || '1']: newChatData
+                    [stepId]: [...(prevChatData[stepId] || []), newChat]
                 };
             });
         }
@@ -178,11 +165,9 @@ export default function Input({setChatData, onLoadingChange}: InputProps) {
         onLoadingChange(true);
 
         try {
-            // setRecentImageUrl(uploadedImageUrl);
-            // setUploadedImageUrl(null)
             let data;
             // 이미지를 포함해 GPT 요청
-            data = await sendImageMessageAuto(inputValue);
+            data = await sendImageMessage();
             // 응답 데이터 저장
             saveChatData(data);
         } catch (error) {
@@ -201,7 +186,8 @@ export default function Input({setChatData, onLoadingChange}: InputProps) {
         finish_reason: string
     }>) => {
         setChatData(prevChatData => {
-            const newChatData = [...(prevChatData[stepId || 'step1'] || [])];
+            if (stepId == null)
+                return prevChatData;
 
             response.forEach(res => {
                 // 응답을 GPT API 형식에 맞게 변환한 후 저장
@@ -212,28 +198,16 @@ export default function Input({setChatData, onLoadingChange}: InputProps) {
                         text: res.message.content
                     }]
                 }
-                newChatData.push(resData);
-            });
 
-            // 세션스토리지에 새로운 대화내역을 추가하여 저장
-            setSessionData(newChatData, stepId || '1');
+                // 세션스토리지에 새로운 대화내역을 추가하여 저장
+                setSessionChatMessages(resData, stepId);
+            });
 
             return {
                 ...prevChatData,
-                [stepId || '1']: newChatData
+                [stepId]: getSessionChatMessagesByStepId(stepId)
             };
         });
-    };
-
-    // 세션 스토리지에 채팅 데이터 저장
-    const setSessionData = (data: any, stepId: string) => {
-        // 모든 대화 내용 저장
-        const existingMessages = JSON.parse(sessionStorage.getItem('chatMessages') || '[]');
-        const updatedMessages = [...existingMessages, ...data];
-
-        sessionStorage.setItem('chatMessages', JSON.stringify(updatedMessages));
-        // 탭별 대화 내용 저장
-        sessionStorage.setItem(`chatMessages_${stepId}`, JSON.stringify(data));
     };
 
     // 알림 창 닫기
@@ -246,7 +220,7 @@ export default function Input({setChatData, onLoadingChange}: InputProps) {
 
     // 채팅을 입력하고 엔터를 눌렀을 때
     const handleTextKeyPress = (event: KeyboardEvent<HTMLInputElement>) => {
-        if (event.key === 'Enter' && !event.shiftKey) {
+        if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
             event.preventDefault();
             handleSend();
         }
@@ -262,7 +236,7 @@ export default function Input({setChatData, onLoadingChange}: InputProps) {
                     maxRows={5}
                     value={inputValue}
                     onChange={handleChange}
-                    onKeyDown={handleTextKeyPress}
+                    onKeyPress={handleTextKeyPress}
                     InputProps={{
                         endAdornment: (
                             <InputAdornment position='end'>
