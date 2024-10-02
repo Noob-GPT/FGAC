@@ -23,7 +23,7 @@ import {
     TextField,
     Typography
 } from '@mui/material';
-import {uploadImage} from '@utils';
+import {getSessionImageUrls, setSessionImageUrls, uploadImage} from '@utils';
 import {useNavigate} from 'react-router-dom';
 
 export default function InputImagePage() {
@@ -34,6 +34,7 @@ export default function InputImagePage() {
     const [alertOpen, setAlertOpen] = useState(false); // 경고 창 열림/닫힘 상태
     const [hasScroll, setHasScroll] = useState(false); // 스크롤 여부 상태
     const scrollBoxRef = useRef<HTMLDivElement | null>(null); // 스크롤이 생기는 박스의 ref
+    const scrollEndRef = useRef<HTMLDivElement | null>(null);
     const navigate = useNavigate();
 
     // 이미지 URL을 업로드하고 배열에 저장
@@ -113,26 +114,9 @@ export default function InputImagePage() {
         accept: {'image/*': []}, // 이미지 파일만 허용
     });
 
-    // 세션 스토리지에 업로드된 이미지 URL 목록 저장
-    const setSessionImages = () => {
-        sessionStorage.setItem('imageUrls', JSON.stringify(uploadedImageUrls));
-    }
-
-    // 세션 스토리지에서 업로드된 이미지 URL 목록 가져오기
-    const getSessionImages = () => {
-        const images = sessionStorage.getItem('imageUrls');
-
-        return images ? JSON.parse(images) : [];
-    };
-
-    // 세션 스토리지에 저장된 이미지가 있는지 확인
-    const isSavedSessionImages = () => {
-        return sessionStorage.getItem('imageUrls') !== null;
-    }
-
     const handleNextStep = (event: MouseEvent<HTMLButtonElement>) => {
         event.stopPropagation();
-        setSessionImages();
+        setSessionImageUrls(uploadedImageUrls);
         navigate('/step/2');
     };
 
@@ -146,17 +130,15 @@ export default function InputImagePage() {
 
     // 세션 스토리지에서 업로드된 이미지 URL 목록 가져와서 상태 업데이트
     useEffect(() => {
-        setUploadedImageUrls(getSessionImages());
+        setUploadedImageUrls(getSessionImageUrls());
     }, []);
 
     // 스크롤 여부 확인
     useEffect(() => {
         const scroll = scrollBoxRef.current;
 
-        if (scroll) {
-            setHasScroll(scroll.scrollHeight > scroll.clientHeight);
-            scroll.scrollIntoView({behavior: 'smooth'});
-        }
+        scroll && setHasScroll(scroll.scrollHeight > scroll.clientHeight);
+        scrollEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [uploadedImageUrls]);
 
     return (
@@ -232,8 +214,9 @@ export default function InputImagePage() {
                                         )}
                                     </Box>
                                 ))}
+                                <Box ref={scrollEndRef}/>
                             </Box>
-                            {!isSavedSessionImages() && (
+                            {getSessionImageUrls().length === 0 && (
                                 <Button
                                     variant={'contained'}
                                     size={'large'}
