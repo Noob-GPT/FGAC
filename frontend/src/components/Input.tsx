@@ -3,6 +3,7 @@ import {Alert, Box, IconButton, InputAdornment, Snackbar, SnackbarCloseReason, T
 import SendIcon from '@mui/icons-material/Send';
 import {useParams} from 'react-router-dom';
 import {
+    getSessionChatMessages,
     getSessionChatMessagesByStepId,
     getSessionImageUrls,
     getSessionVisitedSteps,
@@ -33,13 +34,13 @@ export default function Input({setChatData, onLoadingChange}: InputProps) {
 
     const fixedPrompts: Record<number, string> = {
         // 캐드 도면 이미지 삽입
-        1: 'CAD 도면 이미지를 업로드 할거야 한국어로 알려줘',
+        1: 'CAD 도면 이미지와 건물 개요 사진을 업로드 할거야 한국어로 알려줘',
         // 건축공간 특성 조사
         2: '사진을 보고 건물의 용도, 규모, 건축면적, 연면적(지하층, 지상층)을 찾아줘. 문 개수와 크기도 알려줘. 그리고 사진에서 찾은 용도를 기반으로 대표적인 가연물 3가지를 찾아줘',
         // 관련 법규조항 조사
         3: '사진을 보고 건물의 용도, 규모, 건축면적, 연면적을 기반으로 관련된 대한민국 건축법과 소방법에 해당하는 조항을 찾아줘',
         // 가연물 피난자 특성
-        4: '사진에서 찾은 용도의 수용인원 산정 기준(제곱미터/인원)과 바단 번적 곱한 값을 알려줘. 그리고 사진에서의 용도, 규모, 건축면적, 연면적에서 화재가 일어났을 경우 피난하는 사람들의 특성을 논문이나 기사에서 5가지만 찾아서 설명해줘',
+        4: '사진에서 찾은 용도의 수용인원 산정 기준(제곱미터/인원)과 바닥 면적 곱한 값을 알려줘. 그리고 사진에서의 용도, 규모, 건축면적, 연면적에서 화재가 일어났을 경우 피난하는 사람들의 특성을 논문이나 기사에서 5가지만 찾아서 설명해줘',
         // 피난 시나리오 작성
         5: '전에 대화했던 내용과 사진을 기반으로, 피난 시나리오 7가지를 작성해줘',
         // 피난 시간 계산
@@ -57,30 +58,18 @@ export default function Input({setChatData, onLoadingChange}: InputProps) {
 
         const stepIdNumber = parseInt(stepId, 10);
         const fixedPrompt = fixedPrompts[stepIdNumber];
+        const newChat: ChatData = {
+            role: 'user',
+            content: [{
+                type: 'text',
+                text: fixedPrompt
+            }]
+        };
+
+        // 세션 스토리지에 고정 프롬프트 저장
+        setSessionChatMessages(newChat, stepId);
 
         setChatData(prevChatData => {
-            const newChat: ChatData = {
-                role: 'user',
-                content: [{
-                    type: 'text',
-                    text: fixedPrompt
-                }]
-            };
-            // 이미지가 존재하는 경우 content에 이미지 URL을 추가
-            const imageUrls = getSessionImageUrls();
-
-            if (imageUrls.length > 0) {
-                imageUrls.forEach((imageUrl: string) => {
-                    newChat.content.push({
-                        type: 'image_url',
-                        image_url: {url: imageUrl}
-                    });
-                });
-            }
-
-            // 세션 스토리지에 고정 프롬프트 저장
-            setSessionChatMessages(newChat, stepId);
-
             return {
                 ...prevChatData,
                 [stepId]: [...(prevChatData[stepId] || []), newChat]
@@ -138,14 +127,6 @@ export default function Input({setChatData, onLoadingChange}: InputProps) {
                         text: inputValue // 입력 텍스트
                     }]
                 };
-
-                // imageUrls 배열의 각 이미지 주소를 content 배열에 추가
-                imageUrls.forEach((imageUrl: string) => {
-                    newChat.content.push({
-                        type: 'image_url',
-                        image_url: {url: imageUrl}
-                    });
-                });
 
                 setInputValue('');
                 setSessionChatMessages(newChat, stepId);
