@@ -11,10 +11,12 @@ import {
     InputAdornment,
     Snackbar,
     SnackbarCloseReason,
-    TextField
+    TextField,
+    Tooltip
 } from '@mui/material';
 import Grid from '@mui/material/Grid2';
 import SendIcon from '@mui/icons-material/Send';
+import ReplayIcon from '@mui/icons-material/Replay';
 import {useParams} from 'react-router-dom';
 import {
     getSessionChatMessages,
@@ -68,7 +70,7 @@ export default function Input({setChatData, onLoadingChange}: InputProps) {
         // 수용인원 산정 조사
         4: '내가 알고싶어한 공간의 이름과 바닥면적이 어떻게 돼? 그리고 건물의 용도는 뭐였어? 이를 기반으로 화재 및 피난 시뮬레이션 시나리오 작성 기준(제4조 관련)에 따라 수용인원 산정을 위해 소방법과 건축법의 기준을 각각 적용하여 계산해줘.',
         // 가연물 특성조사
-        5: '이 공간에서의 대표가연물과, 가연물의 특성을 성능기준안전설계 보고서 작성에 용이하도록 알려주는데 이 공간에서의 대표가연물을 선정한 이유에 대한 출처도 꼭 알려줘',
+        5: '이 공간에서의 일반적인 대표가연물과, 가연물의 특성을 성능기준안전설계 보고서 작성에 용이하도록 알려주는데 이 공간에서의 대표가연물을 선정한 이유에 대한 출처도 꼭 알려줘',
         // 피난인의 특성
         6: '건물의 용도는 뭐였어? 해당 건물 용도에서 피난인의 특성은 어떤게 있는지 논문 등을 참고해서 출처와 함께 자세히 알려줘.',
         // 화재하중과 열방출률 조사
@@ -81,7 +83,7 @@ export default function Input({setChatData, onLoadingChange}: InputProps) {
         // ASET 계산
         9: '사진에서 확인할 수 있는 바닥면적, 창의 면적, 문의 면적, 창의 높이, 문의 높이가 어떻게 돼? 이를 사용해서 거실 허용 피난 시간과 플래쉬오버 도달 시간을 계산해서 자세한 식도 알려줘. 플래쉬오버 온도는 500°C, 열방출률은 대표 가연물(예: 폴리우레탄 폼)의 값을 사용하고, kpc 값은 적합한 건축 재료를 기준으로 적용해줘.',
         // RSET 계산
-        10: '내가 알고싶어한 공간의 이름과 바닥면적, 피난문 폭이 얼마였어? 이걸로 RSET의 시간을 알려줘(사진에서 보여준 거실피난시간과 발화실의 피난 개시시간을 다 더한 RSET의 값을 알려줘. 이때 거실피난시간은 사진의 식 차례대로 모든 결과를 풀이와 함께 정리해서 알려줘)',
+        10: '내가 알고싶어한 공간의 이름과 바닥면적, 문의 폭이 얼마였어? 이걸로 RSET의 시간을 알려줘(사진에서 보여준 거실피난시간과 발화실의 피난 개시시간을 다 더한 RSET의 값을 알려줘. 이때 거실피난시간은 사진의 식 차례대로 모든 결과를 풀이와 함께 정리해서 알려줘)',
         // 피난 시간 비교
         11: '위에서 계산한 ASET계산의 플래쉬오버도달시간과 거실허용피난시간을 각각 RSET계산 결과를 비교한 후(2개의 결론이 나와야해) 안전한 피난인지 불안전한 피난인지 정확하게 파악해서 알려줘',
         // 개선안 도출
@@ -121,22 +123,22 @@ export default function Input({setChatData, onLoadingChange}: InputProps) {
 
         setChatAndSessionMessages(fixedPrompt);
 
-        const sendFixedPrompt = async () => {
-            onLoadingChange(true);
-            try {
-                const data = await sendImageMessage();
-                saveChatData(data);
-            } catch (error) {
-                setAlertMessage('요청을 처리하는 중에 오류가 발생했습니다.');
-                setAlertOpen(true);
-            } finally {
-                onLoadingChange(false);
-            }
-        };
-
-        sendFixedPrompt();
+        sendPromptAndSave();
         setSessionVisitedSteps(stepId);
     }, [stepId]);
+
+    const sendPromptAndSave = async () => {
+        onLoadingChange(true);
+        try {
+            const data = await sendImageMessage();
+            saveChatData(data);
+        } catch (error) {
+            setAlertMessage('요청을 처리하는 중에 오류가 발생했습니다.');
+            setAlertOpen(true);
+        } finally {
+            onLoadingChange(false);
+        }
+    };
 
     // 추가 질문 핸들러
     const handleExtraQuestion = async () => {
@@ -165,18 +167,9 @@ export default function Input({setChatData, onLoadingChange}: InputProps) {
         }
 
         setChatAndSessionMessages(extraQuestion);
-
-        try {
-            onLoadingChange(true);
-            const data = await sendImageMessage();
-            saveChatData(data);
-        } catch (error) {
-            setAlertMessage('요청을 처리하는 중에 오류가 발생했습니다.');
-            setAlertOpen(true);
-        } finally {
-            onLoadingChange(false);
-        }
+        await sendPromptAndSave();
     };
+
 
     // 채팅 상태 업데이트
     const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -221,20 +214,7 @@ export default function Input({setChatData, onLoadingChange}: InputProps) {
     const handleSend = async () => {
         saveUserChatData();
 
-        onLoadingChange(true);
-
-        try {
-            let data;
-            // 이미지를 포함해 GPT 요청
-            data = await sendImageMessage();
-            // 응답 데이터 저장
-            saveChatData(data);
-        } catch (error) {
-            setAlertMessage('요청을 처리하는 중에 오류가 발생했습니다.');
-            setAlertOpen(true);
-        } finally {
-            onLoadingChange(false);
-        }
+        await sendPromptAndSave();
     };
 
     // 응답 데이터 저장
@@ -267,6 +247,17 @@ export default function Input({setChatData, onLoadingChange}: InputProps) {
                 [stepId]: getSessionChatMessagesByStepId(stepId)
             };
         });
+    };
+
+    const handleResendPrompt = () => {
+        const stepIdNumber = parseInt(stepId || "0", 10);
+        const fixedPrompt = fixedPrompts[stepIdNumber];
+
+        // 새로운 프롬프트로 세션 및 메시지를 다시 세팅
+        setChatAndSessionMessages(fixedPrompt);
+
+        // 프롬프트 다시 전송
+        sendPromptAndSave();
     };
 
     // 알림 창 닫기
@@ -310,7 +301,7 @@ export default function Input({setChatData, onLoadingChange}: InputProps) {
     return (
         <>
             <Grid container spacing={2}>
-                <Grid size={['2', '8', '12'].includes(stepId || "0") ? 9 : 12}>
+                <Grid size={['2', '8', '12'].includes(stepId || "0") ? 9 : 11}>
                     <TextField
                         placeholder='AI에게 보내기'
                         multiline
@@ -342,6 +333,13 @@ export default function Input({setChatData, onLoadingChange}: InputProps) {
                         </Fab>
                     </Grid>
                 )}
+                <Grid size={1} display="flex" alignItems="center" justifyContent="center">
+                    <Tooltip title={"답변 새로고침"} arrow>
+                        <Fab variant="extended" color={"inherit"} onClick={handleResendPrompt}>
+                            <ReplayIcon/>
+                        </Fab>
+                    </Tooltip>
+                </Grid>
             </Grid>
             <Snackbar
                 open={alertOpen}
