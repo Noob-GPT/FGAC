@@ -43,10 +43,8 @@ const modifyPayloadWithImageUrls = () => {
         lastUserMessage.content = [...lastUserMessage.content, ...newImageContents];
 
         // 변경된 lastUserMessage는 payload[actualIndex]에 이미 반영됨
-        console.log("수정된 lastUserMessage: " + JSON.stringify(lastUserMessage));
     }
 
-    console.log("최종 payload: " + JSON.stringify(payload));
     return payload;
 }
 
