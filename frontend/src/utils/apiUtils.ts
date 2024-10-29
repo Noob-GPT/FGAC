@@ -48,9 +48,14 @@ const modifyPayloadWithImageUrls = () => {
     return payload;
 }
 
-export const sendImageMessage = async () => {
-    // const payload = getSessionChatMessages();
-    const payload = modifyPayloadWithImageUrls();
+export const sendImageMessage = async (stepId: string) => {
+    let payload;
+
+    if (stepId === "2" || stepId === "9") { // RSET 계산 시, 이미지를 분석할 수 없다는 응답을 없애기 위해 10단계는 뺐음
+        payload = modifyPayloadWithImageUrls();
+    } else {
+        payload = getSessionChatMessages();
+    }
 
     const response = await fetch('/api/v1/chatGpt/prompt', {
         method: 'POST',
