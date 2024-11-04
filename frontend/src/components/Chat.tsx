@@ -21,7 +21,11 @@ export default function Chat({data}: ChatData) {
 
     return (
         <Box py={3}>
-            <Typography variant={'h6'} fontWeight={'bold'} gutterBottom>{role}</Typography>
+            <Typography variant={'h6'} fontWeight={'bold'} gutterBottom
+            sx={{
+                color: role === "user" ? 'darkblue' : 'green'
+            }}
+            >{role === "user"? "질문" : "응답"}</Typography>
             <Divider/>
             <ReactMarkdown
                 remarkPlugins={[remarkGfm]}

@@ -1,4 +1,4 @@
-import {getSessionChatMessages} from './sessionUtils';
+import {getSessionChatMessages, getSessionImageUrls} from './sessionUtils';
 
 // 이미지 파일 업로드 API를 요청
 export const uploadImage = async (file: File): Promise<string | null> => {
@@ -24,8 +24,38 @@ export const uploadImage = async (file: File): Promise<string | null> => {
     }
 };
 
-export const sendImageMessage = async () => {
-    const payload = getSessionChatMessages();
+const modifyPayloadWithImageUrls = () => {
+    let payload = getSessionChatMessages();
+
+    // 인덱스를 이용해 실제 위치를 찾기
+    const lastUserMessage = payload[payload.length - 1];
+
+    if (lastUserMessage && lastUserMessage.content) {
+        const imageUrls = getSessionImageUrls();
+
+        // 새로운 이미지 URL을 content에 추가
+        const newImageContents = imageUrls.map((url: any) => ({
+            type: "image_url",
+            image_url: {url}
+        }));
+
+        // 기존 content와 새로운 이미지 URL 결합
+        lastUserMessage.content = [...lastUserMessage.content, ...newImageContents];
+
+        // 변경된 lastUserMessage는 payload[actualIndex]에 이미 반영됨
+    }
+
+    return payload;
+}
+
+export const sendImageMessage = async (stepId: string) => {
+    let payload;
+
+    if (stepId === "2" || stepId === "9") { // RSET 계산 시, 이미지를 분석할 수 없다는 응답을 없애기 위해 10단계는 뺐음
+        payload = modifyPayloadWithImageUrls();
+    } else {
+        payload = getSessionChatMessages();
+    }
 
     const response = await fetch('/api/v1/chatGpt/prompt', {
         method: 'POST',

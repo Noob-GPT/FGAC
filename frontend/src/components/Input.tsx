@@ -1,8 +1,25 @@
-import {ChangeEvent, Dispatch, KeyboardEvent, SetStateAction, SyntheticEvent, useEffect, useState} from 'react';
-import {Alert, Box, IconButton, InputAdornment, Snackbar, SnackbarCloseReason, TextField} from '@mui/material';
+import React, {ChangeEvent, Dispatch, KeyboardEvent, SetStateAction, SyntheticEvent, useEffect, useState} from 'react';
+import {
+    Alert,
+    Box, Button,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    Fab,
+    IconButton,
+    InputAdornment,
+    Snackbar,
+    SnackbarCloseReason,
+    TextField,
+    Tooltip
+} from '@mui/material';
+import Grid from '@mui/material/Grid2';
 import SendIcon from '@mui/icons-material/Send';
+import ReplayIcon from '@mui/icons-material/Replay';
 import {useParams} from 'react-router-dom';
 import {
+    getSessionChatMessages,
     getSessionChatMessagesByStepId,
     getSessionImageUrls,
     getSessionVisitedSteps,
@@ -11,7 +28,7 @@ import {
     setSessionVisitedSteps
 } from '@utils';
 
-interface ChatData {
+export interface ChatData {
     role: string;
     content: Array<{
         type: string;
@@ -30,85 +47,162 @@ export default function Input({setChatData, onLoadingChange}: InputProps) {
     const [alertMessage, setAlertMessage] = useState('');
     const [alertOpen, setAlertOpen] = useState(false);
     const {stepId} = useParams<{ stepId: string }>();
+    const [firstBuildingDetail, setFirstBuildingDetail] = useState<string | null>(null);
+    const [secondBuildingDetail, setSecondBuildingDetail] = useState<string | null>(null);
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const [dialogInputValue, setDialogInputValue] = useState('');
+    const [resolveInputPromise, setResolveInputPromise] = useState<((value: string) => void) | null>(null);
 
     const fixedPrompts: Record<number, string> = {
         // 캐드 도면 이미지 삽입
-        1: 'CAD 도면 이미지를 업로드 할거야 한국어로 알려줘',
+        1: 'CAD 도면 이미지와 건물 개요 사진을 업로드 할거야 한국어로 알려줘',
+
         // 건축공간 특성 조사
-        2: '사진을 보고 건물의 용도, 규모, 건축면적, 연면적(지하층, 지상층)을 찾아줘. 문 개수와 크기도 알려줘. 그리고 사진에서 찾은 용도를 기반으로 대표적인 가연물 3가지를 찾아줘',
+        2: '이 파일의 건물을 분석해서 건물의 용도와 규모, 연면적과 건축면적등을 분석해서 알려줘(한국어로)',
+        // 선택 질문
+        // 사진에서의 **지상 3층**에 대한 정보가 궁금해. 위 파일을 참고해서 지상 3층의 용도, 바닥면적, 층의 높이, 도면에서 확인할 수 있는 창의 면적, 문의 면적, 창의 높이, 문의 높이를 분석해줘.
+
+        // 입력을 받으면 다음 질문 실행
+        // **침실2** 공간에 대한 정보만 추려줘. 용도, 바닥 면적, 층의 높이, 창의 면적, 문의 면적, 창의 높이, 문의 높이에 대한 수치가 필요해.
+
         // 관련 법규조항 조사
-        3: '사진을 보고 건물의 용도, 규모, 건축면적, 연면적을 기반으로 관련된 대한민국 건축법과 소방법에 해당하는 조항을 찾아줘',
-        // 가연물 피난자 특성
-        4: '사진에서 찾은 용도의 수용인원 산정 기준(제곱미터/인원)과 바단 번적 곱한 값을 알려줘. 그리고 사진에서의 용도, 규모, 건축면적, 연면적에서 화재가 일어났을 경우 피난하는 사람들의 특성을 논문이나 기사에서 5가지만 찾아서 설명해줘',
+        3: '그럼 파악한 연면적, 바닥면적, 건축면적등 찾은 정보를 이용해서 건축법시행령, 건축물의 소방시설 설치기준에 준수하여 건축법과 소방법(다양한 소방법에서도 정확히 어떤 법률을 사용해야 하는지)의 용도를 구분하여 소방설치 권장사항을 제안해줘.(근거되는 법령이 몇조 몇항인지 자세히 적어줘.)',
+        // 수용인원 산정 조사
+        4: '내가 알고싶어한 공간의 용도와 바닥면적이 어떻게 돼? 그리고 건물의 용도는 뭐였어? 알 수 없는 정보는 대표적인 특성을 적용해서 이를 기반으로 화재 및 피난 시뮬레이션 시나리오 작성 기준(제4조 관련)에 따라 수용인원 산정을 위해 소방법과 건축법의 기준을 각각 적용하여 계산해줘.',
+        // 가연물 특성조사
+        5: '이 공간에서의 일반적인 대표가연물과, 가연물의 특성을 성능기준안전설계 보고서 작성에 용이하도록 알려주는데 이 공간에서의 대표가연물을 선정한 이유에 대한 출처도 꼭 알려줘',
+        // 피난인의 특성
+        6: '건물의 용도는 뭐였어? 해당 건물 용도에서 피난인의 특성은 어떤게 있는지 논문 등을 참고해서 출처와 함께 자세히 알려줘.',
+        // 화재하중과 열방출률 조사
+        7: '지금까지 찾았던 건축물의 용도별로 대표적인 화재하중값(KJ/m2)을 알려주는데 찾은 이 값의 출처도 함께 알려줘. 그리고 위에서 찾은 대표가연물의 열방출률을 가장 많이 발생한 대표가연물인 동시에 높은 열방출률을 가졌던 값을 출처와 함께 2~3개 알려줘. 만약 이미지를 분석하여 직접적인 수치를 알 수 없으면 일반적인 정보를 기반으로 알려줘',
         // 피난 시나리오 작성
-        5: '전에 대화했던 내용과 사진을 기반으로, 피난 시나리오 7가지를 작성해줘',
-        // 피난 시간 계산
-        6: '전에 대화했던 내용과 사진을 기반으로, 각 시나리오에 대한 피난 시간을 계산해줘',
+        8: '이 건물의 용도는 뭐였어? 해당 용도와 유사한 용도의 화재사례를 분석해서 시나리오를 자세히 작성해줘. 이 때, 화재 및 피난시뮬레이션의 시나리오 작성 기준 별표1의 시나리오 유형 7가지를 참고해 같은 앞 단계들에서 수집한 유사한 용도의 화재사례를 분석해 시나리오를 자세히 작성해줘.',
+        // 선택 질문
+        // 이 7가지 시나리오 중에서 대피 경로 최적화의 시나리오는 몇번 시나리오인지 자세한 이유와 함께 알려줘
+
+        // ASET 계산
+        9: '내가 알고싶어한 공간의 바닥면적, 창의 면적, 문의 면적, 창의 높이, 문의 높이가 어떻게 돼? 이를 사용해서 거실허용피난시간과 플래쉬오버도달시간을 계산해서 자세한 식도 알려줘.\n' +
+            '이 때 플래시오버도달시간 공식을 LaTex로 표현하자면 다음과 같아.\n\n' +
+            '\\Delta T = \\\\left( \\\\frac{Q^2}{h_k A_s A_u \\\\sqrt{h_u}} \\\\right)^{\\\\frac{1}{3}}\n\n' +
+            '각 변수에 대한 정보는 다음과 같아.\n\n' +
+            'h_k = \\\\left( \\\\frac{k p c_p}{t} \\\\right)^{\\\\frac{1}{2}} : \n\n' +
+            '\\\\text{구획실의 열전도도 } \\\\left( \\\\frac{\\\\text{kW}}{\\\\text{m} \\\\cdot \\\\text{K}} \\\\right)\n\n' +
+            'kpc_p : 건축 재료의 착화성 \\\\left( \\\\frac{\\\\text{kW}}{\\\\text{m}^2 \\\\cdot \\\\text{K}^2} \\\\right) \\\\cdot \\\\text{s}\n\n' +
+            'A_s : 전체 길이 면적(m^2)\n\n' +
+            'A_u : 개구부 면적(m^2)\n\n' +
+            'h_u : 개구부 높이(m)\n\n' +
+            '플래쉬오버 온도는 500°C, 열방출률은 위에서 찾은 대표 가연물의 값을 사용하고, kpc 값은 적합한 건축 재료를 기준으로 적용해줘.\n' +
+            '각각의 값을 위에서 찾아준 값으로 넣어주고, 값을 찾을 수 없으면, 첨부한 사진을 참고해. 그럼에도 정확한 수치를 찾을 수 없는 경우에는 너가 용도에 맞는 값을 적절하게 넣어서 계산해.\n' +
+            '최종적으로 계산된 델타T 값을 자세한 풀이와 함께 알려줘.',
+        // RSET 계산
+        10: '내가 알고싶어한 공간의 이름과 바닥면적, 문의 폭이 얼마였어? 이걸로 RSET의 시간을 알려줘. \n' +
+            '이 때 다음을 참고해서 RSET의 값을 구하고 설명해줘. \n\n' +
+            '거실허용피난시간\n' +
+            'r T_1 = a \\sqrt{A_1}\n' +
+            'a = 천장의 높이가 6m 미만인 거실 또는 그 부분에서 2,\n' +
+            '천장의 높이가 6m 이상인 거실 또는 그 부분에서는 3\n' +
+            'A_1 = 바닥 면적(m^2)\n' +
+            '\n' +
+            '거실피난시간\n' +
+            '1. 바닥면적(m^2)\n' +
+            '2. 피난대상인원수(인원수) = 바닥면적(m^2)*(인원수)\\(m^2)\n' +
+            '3. 피난로의 폭의 합계(m)\n' +
+            '4. 출구통과시간 = 피난대상인원수 (인)\\문 폭의 합계*1.5(m\\인원수/s/m)\n' +
+            '5. 실내보행시간 = (거실가로 - 문폭의 합계) + (거실세로 - 문폭의 합계)(인원수)\\보행속도(m\\s)\n' +
+            '*보행속도*\n' +
+            '1.3m/s : 사무소 학교 체육관 등의 용도 부분\n' +
+            '1.0m/s : 백화점 호텔 일반 집회실 등 불특정 다수의 용도\n' +
+            '0.5m/s : 병원 밀도가 높은 집회장소 등\n' +
+            '6. 거실피난시간 = MAX(출구통과시간,실내보행시간)\n' +
+            '\n' +
+            '발화실의 피난 개시시간\n' +
+            'a T_0 = 2 \\sqrt{A_1}\n' +
+            'A_1 = 바닥면적(m^2)',
+        // 피난 시간 비교
+        11: '위에서 계산한 ASET계산의 플래쉬오버도달시간과 거실허용피난시간을 각각 RSET계산 결과를 비교한 후(2개의 결론이 나와야해) 안전한 피난인지 불안전한 피난인지 정확하게 파악해서 알려줘',
         // 개선안 도출
-        7: '전에 대화했던 내용과 사진을 기반으로, 개선안을 도출해줘',
+        12: '불안전한 피난인 경우로만 건물의 구조적 특성, 사용하는 인원, 용도, 대피 인원의 특성을 고려해서 안전한 피난이 나올 수 있도록 개선안을 도출해줘',
+        // 선택 질문
+        // 각 개선안에 대해 비용이 얼마정도 드는지 대략적으로 알려줘.
+    };
+
+    const setChatAndSessionMessages = (message: string) => {
+        if (stepId == null) return;
+
+        const newChat: ChatData = {
+            role: 'user',
+            content: [{
+                type: 'text',
+                text: message
+            }]
+        };
+
+        // 세션 스토리지에 고정 프롬프트 또는 추가 질문 저장
+        setSessionChatMessages(newChat, stepId);
+
+        setChatData(prevChatData => ({
+            ...prevChatData,
+            [stepId]: [...(prevChatData[stepId] || []), newChat]
+        }));
     };
 
     // 입력 탭이 변경되면 프롬프트를 서버에 보내고 응답을 받음
     useEffect(() => {
         const visitedSteps = getSessionVisitedSteps();
 
-        if (stepId == null || visitedSteps[stepId])
-            return;
+        if (stepId == null || visitedSteps[stepId]) return;
 
         const stepIdNumber = parseInt(stepId, 10);
         const fixedPrompt = fixedPrompts[stepIdNumber];
 
-        setChatData(prevChatData => {
-            const newChat: ChatData = {
-                role: 'user',
-                content: [{
-                    type: 'text',
-                    text: fixedPrompt
-                }]
-            };
-            // 이미지가 존재하는 경우 content에 이미지 URL을 추가
-            const imageUrls = getSessionImageUrls();
+        setChatAndSessionMessages(fixedPrompt);
 
-            if (imageUrls.length > 0) {
-                imageUrls.forEach((imageUrl: string) => {
-                    newChat.content.push({
-                        type: 'image_url',
-                        image_url: {url: imageUrl}
-                    });
-                });
-            }
-
-            // 세션 스토리지에 고정 프롬프트 저장
-            setSessionChatMessages(newChat, stepId);
-
-            return {
-                ...prevChatData,
-                [stepId]: [...(prevChatData[stepId] || []), newChat]
-            };
-        });
-
-        // GPT API로 고정 프롬프트와 이미지 URL 전송
-        const sendFixedPrompt = async () => {
-            onLoadingChange(true);
-            try {
-                // 이미지를 포함해 GPT 요청
-                const data = await sendImageMessage();
-                // 응답 데이터 저장
-                saveChatData(data);
-            } catch (error) {
-                setAlertMessage('요청을 처리하는 중에 오류가 발생했습니다.');
-                setAlertOpen(true);
-            } finally {
-                onLoadingChange(false);
-            }
-        };
-
-        // fetch 요청 실행
-        sendFixedPrompt();
-
-        // 방문 기록 추가
+        sendPromptAndSave();
         setSessionVisitedSteps(stepId);
     }, [stepId]);
+
+    const sendPromptAndSave = async () => {
+        onLoadingChange(true);
+        try {
+            const data = await sendImageMessage(stepId!);
+            saveChatData(data);
+        } catch (error) {
+            setAlertMessage('요청을 처리하는 중에 오류가 발생했습니다.');
+            setAlertOpen(true);
+        } finally {
+            onLoadingChange(false);
+        }
+    };
+
+    // 추가 질문 핸들러
+    const handleExtraQuestion = async () => {
+        let extraQuestion = "";
+
+        switch (stepId) {
+            case "2":
+                // 사용자가 버튼을 처음 누르면 모달을 띄워서 안내 문구를 보여주고 변수1을 입력받고, 해당 변수를 포함한 질문으로 Api 요청,
+                // 두번째 누른 경우 모달을 띄워서 안내 문구를 보여주고 변수2을 입력받고, 해당 변수를 포함한 질문으로 Api 요청,
+                if (!firstBuildingDetail) {
+                    const input1 = await showDialogAndGetInput();
+                    extraQuestion = `사진에서의 ${input1}에 대한 정보가 궁금해. 위 파일을 참고해서 ${input1}의 용도, 바닥면적, 층의 높이, 도면에서 확인할 수 있는 창의 면적, 문의 면적, 창의 높이, 문의 높이를 분석해줘.`;
+                    setFirstBuildingDetail(input1);
+                } else {
+                    const input2 = await showDialogAndGetInput();
+                    extraQuestion = `${input2} 공간에 대한 정보만 추려줘.`;
+                    setSecondBuildingDetail(input2);
+                }
+                break;
+            case "8":
+                extraQuestion = "이 7가지 시나리오 중에서 대피 경로 최적화의 시나리오는 몇번 시나리오인지 자세한 이유와 함께 알려줘";
+                break;
+            case "12":
+                extraQuestion = "각 개선안에 대해 비용이 얼마정도 드는지 대략적으로 알려줘.";
+                break;
+        }
+
+        setChatAndSessionMessages(extraQuestion);
+        await sendPromptAndSave();
+    };
 
 
     // 채팅 상태 업데이트
@@ -139,14 +233,6 @@ export default function Input({setChatData, onLoadingChange}: InputProps) {
                     }]
                 };
 
-                // imageUrls 배열의 각 이미지 주소를 content 배열에 추가
-                imageUrls.forEach((imageUrl: string) => {
-                    newChat.content.push({
-                        type: 'image_url',
-                        image_url: {url: imageUrl}
-                    });
-                });
-
                 setInputValue('');
                 setSessionChatMessages(newChat, stepId);
 
@@ -162,20 +248,7 @@ export default function Input({setChatData, onLoadingChange}: InputProps) {
     const handleSend = async () => {
         saveUserChatData();
 
-        onLoadingChange(true);
-
-        try {
-            let data;
-            // 이미지를 포함해 GPT 요청
-            data = await sendImageMessage();
-            // 응답 데이터 저장
-            saveChatData(data);
-        } catch (error) {
-            setAlertMessage('요청을 처리하는 중에 오류가 발생했습니다.');
-            setAlertOpen(true);
-        } finally {
-            onLoadingChange(false);
-        }
+        await sendPromptAndSave();
     };
 
     // 응답 데이터 저장
@@ -210,6 +283,17 @@ export default function Input({setChatData, onLoadingChange}: InputProps) {
         });
     };
 
+    const handleResendPrompt = () => {
+        const stepIdNumber = parseInt(stepId || "0", 10);
+        const fixedPrompt = fixedPrompts[stepIdNumber];
+
+        // 새로운 프롬프트로 세션 및 메시지를 다시 세팅
+        setChatAndSessionMessages(fixedPrompt);
+
+        // 프롬프트 다시 전송
+        sendPromptAndSave();
+    };
+
     // 알림 창 닫기
     const handleAlertClose = (_event: SyntheticEvent<any, Event> | Event, reason?: SnackbarCloseReason) => {
         if (reason === 'clickaway') // 알림 창 외부를 클릭하여 알림 창이 닫히지 않도록 함
@@ -226,33 +310,71 @@ export default function Input({setChatData, onLoadingChange}: InputProps) {
         }
     };
 
+    // 다이얼로그 열기 및 값 반환
+    const showDialogAndGetInput = () => {
+        return new Promise<string>((resolve) => {
+            setResolveInputPromise(() => resolve);
+            setDialogOpen(true);
+        });
+    };
+
+    // 다이얼로그 제출 핸들러
+    const handleDialogSubmit = () => {
+        if (resolveInputPromise) {
+            resolveInputPromise(dialogInputValue);
+            setDialogInputValue('');
+        }
+        handleDialogClose()
+    };
+
+    // 다이얼로그 닫기
+    const handleDialogClose = () => {
+        setDialogOpen(false);
+    };
+
     return (
         <>
-            <Box>
-                <TextField
-                    placeholder='AI에게 보내기'
-                    multiline
-                    fullWidth
-                    maxRows={5}
-                    value={inputValue}
-                    onChange={handleChange}
-                    onKeyPress={handleTextKeyPress}
-                    InputProps={{
-                        endAdornment: (
-                            <InputAdornment position='end'>
-                                <IconButton onClick={handleSend} disabled={!inputValue}>
-                                    <SendIcon/>
-                                </IconButton>
-                            </InputAdornment>
-                        ),
-                        sx: {
-                            p: '14px 6px 14px 20px',
-                            borderRadius: '24px',
-                            backgroundColor: '#F8F8F8'
-                        }
-                    }}
-                />
-            </Box>
+            <Grid container spacing={2}>
+                <Grid size={['2', '8', '12'].includes(stepId || "0") ? 9 : 11}>
+                    <TextField
+                        placeholder='AI에게 보내기'
+                        multiline
+                        fullWidth
+                        maxRows={5}
+                        value={inputValue}
+                        onChange={handleChange}
+                        onKeyPress={handleTextKeyPress}
+                        InputProps={{
+                            endAdornment: (
+                                <InputAdornment position='end'>
+                                    <IconButton onClick={handleSend} disabled={!inputValue}>
+                                        <SendIcon/>
+                                    </IconButton>
+                                </InputAdornment>
+                            ),
+                            sx: {
+                                p: '14px 6px 14px 20px',
+                                borderRadius: '24px',
+                                backgroundColor: '#F8F8F8',
+                            }
+                        }}
+                    />
+                </Grid>
+                {['2', '8', '12'].includes(stepId || "0") && (
+                    <Grid size={2} display="flex" alignItems="center" justifyContent="center">
+                        <Fab variant="extended" color={"primary"} onClick={handleExtraQuestion}>
+                            추가 질문
+                        </Fab>
+                    </Grid>
+                )}
+                <Grid size={1} display="flex" alignItems="center" justifyContent="center">
+                    <Tooltip title={"답변 새로고침"} arrow>
+                        <Fab variant="extended" color={"inherit"} onClick={handleResendPrompt}>
+                            <ReplayIcon/>
+                        </Fab>
+                    </Tooltip>
+                </Grid>
+            </Grid>
             <Snackbar
                 open={alertOpen}
                 autoHideDuration={6000}
@@ -263,6 +385,29 @@ export default function Input({setChatData, onLoadingChange}: InputProps) {
                     {alertMessage}
                 </Alert>
             </Snackbar>
+            <Dialog open={dialogOpen} onClose={handleDialogClose}>
+                <DialogTitle>{!firstBuildingDetail ? "정보를 알고싶은 층을 입력해주세요:" : "정보를 알고싶은 공간을 입력해주세요:"}</DialogTitle>
+                <DialogContent>
+                    <TextField
+                        autoFocus
+                        margin="dense"
+                        label="상세 정보 입력"
+                        fullWidth
+                        value={dialogInputValue}
+                        onChange={(e) => setDialogInputValue(e.target.value)}
+                        onKeyDown={(event: React.KeyboardEvent<HTMLInputElement>) => {
+                            if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+                                event.preventDefault();
+                                handleDialogSubmit();
+                            }
+                        }}
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleDialogClose}>취소</Button>
+                    <Button onClick={handleDialogSubmit}>확인</Button>
+                </DialogActions>
+            </Dialog>
         </>
     );
 }
