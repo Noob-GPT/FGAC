@@ -51,10 +51,19 @@ const modifyPayloadWithImageUrls = () => {
 export const sendImageMessage = async (stepId: string) => {
     let payload;
 
-    if (stepId === "2" || stepId === "9") { // RSET 계산 시, 이미지를 분석할 수 없다는 응답을 없애기 위해 10단계는 뺐음
+    if (stepId === "2" || stepId === "8") { // RSET 계산 시, 이미지를 분석할 수 없다는 응답을 없애기 위해 10단계는 뺐음
         payload = modifyPayloadWithImageUrls();
     } else {
         payload = getSessionChatMessages();
+    }
+
+    // stepId가 2일 경우 payload 앞에 system 메시지 추가
+    if (stepId === "2") {
+        const systemMessage = {
+            role: "system",
+            content: "너는 전문 건축 설계자이며 소방 전문가 그리고 법률인이야. 한국말로 대답해줘"
+        };
+        payload.unshift(systemMessage);
     }
 
     const response = await fetch('/api/v1/chatGpt/prompt', {
