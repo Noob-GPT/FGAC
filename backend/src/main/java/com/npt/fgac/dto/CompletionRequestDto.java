@@ -23,6 +23,6 @@ public class CompletionRequestDto {
         this.messages = messages;
 //        this.messages = new ArrayList<>();  // 리스트 초기화
 //        this.messages.add(messages);
-        this.temperature = 0.8f;
+        this.temperature = 0.6f;
     }
 }
