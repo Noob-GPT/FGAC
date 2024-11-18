@@ -68,12 +68,12 @@ export default function Sidebar() {
                     <Tab label='수용인원 산정 조사' {...a11yProps(3)} disabled={!canNextTab}/>
                     <Tab label='가연물 특성조사' {...a11yProps(4)} disabled={!canNextTab}/>
                     <Tab label='피난인의 특성' {...a11yProps(5)} disabled={!canNextTab}/>
-                    <Tab label='화재하중과 열방출률 조사' {...a11yProps(6)} disabled={!canNextTab}/>
-                    <Tab label='피난 시나리오 작성' {...a11yProps(7)} disabled={!canNextTab}/>
-                    <Tab label='ASET 계산' {...a11yProps(8)} disabled={!canNextTab}/>
-                    <Tab label='RSET 계산' {...a11yProps(9)} disabled={!canNextTab}/>
-                    <Tab label='피난 시간 비교' {...a11yProps(10)} disabled={!canNextTab}/>
-                    <Tab label='개선안 도출' {...a11yProps(11)} disabled={!canNextTab}/>
+                    <Tab label='피난 시나리오 작성' {...a11yProps(6)} disabled={!canNextTab}/>
+                    <Tab label='ASET 계산' {...a11yProps(7)} disabled={!canNextTab}/>
+                    <Tab label='RSET 계산' {...a11yProps(8)} disabled={!canNextTab}/>
+                    <Tab label='피난 시간 비교' {...a11yProps(9)} disabled={!canNextTab}/>
+                    <Tab label='개선안 도출' {...a11yProps(10)} disabled={!canNextTab}/>
+                    <Tab label='플래시오버 도달시간' {...a11yProps(11)} disabled={!canNextTab}/>
                 </Tabs>
             </Box>
             <Box display={'flex'} justifyContent={'center'} alignContent={'center'} p={2} mt="auto">
