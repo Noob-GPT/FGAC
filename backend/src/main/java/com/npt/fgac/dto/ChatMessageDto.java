@@ -1,6 +1,7 @@
 package com.npt.fgac.dto;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -13,7 +14,7 @@ public class ChatMessageDto {
     private Object content;
     // JSON 역직렬화를 위한 생성자에 @JsonCreator 사용
     @JsonCreator
-    public ChatMessageDto(String role, Object content) {
+    public ChatMessageDto(@JsonProperty("role") String role, @JsonProperty("content") Object content) {
         this.role = role;
         this.content = content;
     }
