@@ -17,6 +17,7 @@ import java.util.*;
 
 @RestController
 @RequestMapping(value = "/api/v1/chatGpt")
+@CrossOrigin(origins = "http://localhost:3000")
 @RequiredArgsConstructor
 @Slf4j
 public class ChatGPTController {
