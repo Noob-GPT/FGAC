@@ -7,7 +7,7 @@ export const uploadImage = async (file: File): Promise<string | null> => {
     formData.append('image', file);
 
     try {
-        const response = await fetch('/api/v1/chatGpt/image', {
+        const response = await fetch('http://localhost:8080/api/v1/chatGpt/image', {
             method: 'POST',
             body: formData
         });
@@ -66,7 +66,7 @@ export const sendImageMessage = async (stepId: string) => {
         payload.unshift(systemMessage);
     }
 
-    const response = await fetch('/api/v1/chatGpt/prompt', {
+    const response = await fetch('http://localhost:8080/api/v1/chatGpt/prompt', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
